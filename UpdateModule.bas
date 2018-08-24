@@ -35,6 +35,7 @@ Public Function connect_update_DB()
 End Function
 
 Sub Update_To_Local()
+    Sheets("compareVer").Unprotect
     Call FolderDir
     Call connect_update_DB
     strSql_UM = _
@@ -47,14 +48,14 @@ Sub Update_To_Local()
         "    from " + _
         "        (select filename, x_majorUpgrade, y_minorUpgrade, z_bugFix, updateDate as updateDate, version " + _
         "        from " + _
-        "            (SELECT filename AS f, MAX(id) AS u FROM userUpdateLog WHERE username = '" + UserName + "' GROUP BY filename ) y " + _
+        "            (SELECT filename AS f, MAX(id) AS u FROM userUpdateLog WHERE username = '" + userName + "' GROUP BY filename ) y " + _
         "        INNER Join " + _
-        "            (SELECT * FROM userUpdateLog WHERE username = '" + UserName + "') x " + _
+        "            (SELECT * FROM userUpdateLog WHERE username = '" + userName + "') x " + _
         "        ON x.filename = y.f AND x.id = y.u) a " + _
         "    Right Join " + _
         "        (select filename, x_majorUpgrade, y_minorUpgrade, z_bugFix, updateDate as updateDate, version " + _
         "        from " + _
-        "            (SELECT filename AS f, MAX(id) AS u FROM versionLog where authority='user' GROUP BY filename ) y " + _
+        "            (SELECT filename AS f, MAX(id) AS u FROM versionLog GROUP BY filename ) y " + _
         "        INNER Join " + _
         "            versionLog x " + _
         "        ON x.filename = y.f AND x.id = y.u) b " + _
@@ -70,8 +71,14 @@ Sub Update_To_Local()
     luncherUpdateDone = False
     Do While rs_UM.EOF = False
         FN = rs_UM.Fields("filename").Value
+        If FN = ThisWorkbook.Name Then
+            luncherUpdateDone = True
+            ThisWorkbook.Save
+            ThisWorkbook.SaveAs currentDir + "update_backup\foo"
+        End If
         confirmUpdateDone = True
         newVer = rs_UM.Fields("newVersion").Value
+        Set isHere = Sheets("CompareVer").Range("d1:d110").Find(FN, LookIn:=xlValues)
         If Dir(currentDir + FN) <> "" Then
             usedVer = rs_UM.Fields("myLastVersion").Value
             FileCopy (currentDir + FN), (currentDir + "update_backup\" + FN + "_" + Format(Now(), "yymmddhhnnss") + "_" + usedVer + "_.backup")
@@ -83,14 +90,26 @@ Sub Update_To_Local()
             "   '" + FN + "'," + _
             "   " + CStr(rs_UM.Fields("x").Value) + ", " + CStr(rs_UM.Fields("y").Value) + ", " + CStr(rs_UM.Fields("z").Value) + ", " + _
             "   '" + rs_UM.Fields("newVersion").Value + "', " + _
-            "   '" + UserName + "'" + _
+            "   '" + userName + "'" + _
             ");"
         Debug.Print (strSql_UM)
         cn_UM.Execute (strSql_UM)
         rs_UM.MoveNext
     Loop
     
-    If confirmUpdateDone = True Then
-        MsgBox ("업데이트를 진행하였습니다.")
+    cn_UM.Close
+    If luncherUpdateDone Then
+        MsgBox "현재 파일이 업데이트되었습니다."
+        Workbooks.Open currentDir + "###File_update.xlsm"
+        Application.Run "'" + currentDir + "###File_update.xlsm'!Auto_Open"
+        ThisWorkbook.Close
     End If
+    
+    If confirmUpdateDone = True Then
+        Call Auto_Open
+        MsgBox ("업데이트가 완료되었습니다.")
+    Else
+        MsgBox ("업데이트할 파일이 없습니다.")
+    End If
+    Sheets("compareVer").Protect
 End Sub
