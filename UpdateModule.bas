@@ -71,7 +71,7 @@ Sub Update_To_Local()
     luncherUpdateDone = False
     Do While rs_UM.EOF = False
         FN = rs_UM.Fields("filename").Value
-        If FN = ThisWorkbook.Name Then
+        If FN = "###File_update.xlsm" Then
             luncherUpdateDone = True
             ThisWorkbook.Save
             ThisWorkbook.SaveAs currentDir + "update_backup\foo"
@@ -108,7 +108,7 @@ Sub Update_To_Local()
     If confirmUpdateDone = True Then
         Call Auto_Open
         MsgBox ("업데이트가 완료되었습니다.")
-    Else
+    ElseIf ThisWorkbook.Name = "###File_update.xlsm" Then
         MsgBox ("업데이트할 파일이 없습니다.")
     End If
     Sheets("compareVer").Protect
